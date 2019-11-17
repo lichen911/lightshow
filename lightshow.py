@@ -52,7 +52,74 @@ def rotate_one_dark(relay_list):
         time.sleep(DELAY)
         relay.on()
     time.sleep(DELAY)
-    all_off(relay_list)
+
+
+def bounce(relay_list):
+    for relay in relay_list:
+        relay.on()
+        time.sleep(DELAY)
+        relay.off()
+
+    for relay in relay_list[len(relay_list)-2:0:-1]:
+        relay.on()
+        time.sleep(DELAY)
+        relay.off()
+
+
+def alternate_lit(relay_list):
+    list_one = []
+    list_two = []
+
+    for index, relay in enumerate(relay_list):
+        if index % 2 == 0:
+            list_one.append(relay)
+        else:
+            list_two.append(relay)
+
+    for _ in range(2):
+        all_on(list_one)
+        all_off(list_two)
+        time.sleep(DELAY)
+        all_off(list_one)
+        all_on(list_two)
+        time.sleep(DELAY)
+
+
+def outside_in(relay_list):
+    relay_count = len(relay_list)
+
+    for _ in range(2):
+        middle_case = False
+        for index in range(relay_count):
+            other_side = relay_count - index - 1
+            if abs(other_side - index) == 1:
+                if middle_case:
+                    continue
+                else:
+                    middle_case = True
+
+            relay_list[index].on()
+            relay_list[other_side].on()
+            time.sleep(DELAY)
+            relay_list[index].off()
+            relay_list[other_side].off()
+
+
+def inside_out(relay_list):
+    relay_count = len(relay_list)
+    if relay_count % 2 == 0:
+        middle_high = int(relay_count / 2)
+        middle_low = middle_high - 1
+
+    for _ in range(2):
+        for index in range(int(relay_count / 2)):
+            current_low = middle_low - index
+            current_high = middle_high + index
+            relay_list[current_low].on()
+            relay_list[current_high].on()
+            time.sleep(DELAY)
+            relay_list[current_low].off()
+            relay_list[current_high].off()
 
 
 def run_forever(function_name, args=()):
@@ -61,8 +128,34 @@ def run_forever(function_name, args=()):
 
 
 def random_effect(relay_list, effect_list):
+    global DELAY
+    delay_times = [0.100, 0.200, 0.300, 0.400]
+    DELAY = random.choice(delay_times)
     current_effect = random.choice(effect_list)
-    current_effect(relay_list)
+    list_reversed = random.choice([True, False])
+
+
+    all_on(relay_list)
+    time.sleep(10)
+    all_off(relay_list)
+
+    for _ in range(10):
+        if list_reversed:
+            current_effect(relay_list[::-1])
+        else:
+            current_effect(relay_list)
+
+
+def show_1(relay_list):
+    all_on(relay_list)
+    time.sleep(10)
+    all_off(relay_list)
+    time.sleep(0.200)
+    all_on(relay_list)
+    time.sleep(0.200)
+    all_off(relay_list)
+    for _ in range(10):
+        bounce(relay_list)
 
 
 def main():
@@ -72,7 +165,8 @@ def main():
     for relay_pin in relay_pin_list:
         relay_list.append(gpiozero.OutputDevice(relay_pin, active_high=False, initial_value=False))
 
-    effect_list = [forward_and_reverse, forward, all_on, all_off, rotate_one_dark, rotate_one_lit]
+    effect_list = [forward_and_reverse, forward, rotate_one_dark, rotate_one_lit, bounce, alternate_lit, outside_in, inside_out]
+    #effect_list = [inside_out]
 
     # set1 = relay_list[:3]
     # set2 = relay_list[3:]
@@ -80,13 +174,19 @@ def main():
     # print(set1)
     # print(set2)
 
+    # rotate first 3 forever
     # thread1 = threading.Thread(target=run_forever, args=(rotate_one_lit, (set1, )))
     # thread1.daemon = True
     # thread1.start()
 
+    # run all effects randomly
     thread2 = threading.Thread(target=run_forever, args=(random_effect, (relay_list, effect_list)))
     thread2.daemon = True
     thread2.start()
+
+    # thread3 = threading.Thread(target=run_forever, args=(show_1, (relay_list, )))
+    # thread3.daemon = True
+    # thread3.start()
 
     try:
         while True:
