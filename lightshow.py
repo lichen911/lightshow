@@ -97,7 +97,10 @@ def outside_in(relay_list):
                     continue
                 else:
                     middle_case = True
-
+            # skip lighting the last at the end of the run so it
+            # looks better when looping
+            elif index == relay_count - 1 or other_side == 0:
+                    continue
             relay_list[index].on()
             relay_list[other_side].on()
             time.sleep(DELAY)
@@ -122,6 +125,17 @@ def inside_out(relay_list):
             relay_list[current_high].off()
 
 
+def stacker(relay_list):
+    relay_count = len(relay_list)
+    for index in range(relay_count):
+        for inner_idx, relay in enumerate(relay_list[0:relay_count-index]):
+            relay.on()
+            time.sleep(DELAY)
+            if inner_idx != relay_count - index - 1:
+                relay.off()
+    all_off(relay_list)
+
+
 def run_forever(function_name, args=()):
     while True:
         function_name(*args)
@@ -133,6 +147,7 @@ def random_effect(relay_list, effect_list):
     DELAY = random.choice(delay_times)
     current_effect = random.choice(effect_list)
     list_reversed = random.choice([True, False])
+    toggle = False
 
 
     all_on(relay_list)
@@ -140,7 +155,16 @@ def random_effect(relay_list, effect_list):
     all_off(relay_list)
 
     for _ in range(10):
-        if list_reversed:
+        if current_effect == stacker:
+            # make the stacker effect reverse the list every time
+            # because it makes for a better effect
+            if toggle:
+                current_effect(relay_list[::-1])
+                toggle = False
+            else:
+                current_effect(relay_list)
+                toggle = True
+        elif list_reversed:
             current_effect(relay_list[::-1])
         else:
             current_effect(relay_list)
@@ -166,7 +190,7 @@ def main():
         relay_list.append(gpiozero.OutputDevice(relay_pin, active_high=False, initial_value=False))
 
     effect_list = [forward_and_reverse, forward, rotate_one_dark, rotate_one_lit, bounce, alternate_lit, outside_in, inside_out]
-    #effect_list = [inside_out]
+    #effect_list = [stacker]
 
     # set1 = relay_list[:3]
     # set2 = relay_list[3:]
