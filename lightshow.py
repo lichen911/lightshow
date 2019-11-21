@@ -5,6 +5,7 @@ import time
 import random
 import threading
 import sys
+import morse_talk as mtalk
 
 DELAY = 0.100
 
@@ -136,6 +137,27 @@ def stacker(relay_list):
     all_off(relay_list)
 
 
+def morse_code(relay_list):
+    global DELAY
+    DELAY = 0.400
+    relay_count = len(relay_list)
+    phrase = random.choice(['epstein didnt kill himself',
+        'help kidnapped by santa',
+        'satan rules',
+        'thinkin bout thos beans'])
+    morse_code = mtalk.encode(phrase, encoding_type='binary')
+    morse_code = ('0' * relay_count) + morse_code + ('0' * relay_count)
+
+    for index in range(len(morse_code) - relay_count):
+        display_window = morse_code[index:index+relay_count]
+        for x, segment in enumerate(display_window):
+            if segment == '0':
+                relay_list[x].off()
+            elif segment == '1':
+                relay_list[x].on()
+        time.sleep(DELAY)
+
+
 def run_forever(function_name, args=()):
     while True:
         function_name(*args)
@@ -164,6 +186,10 @@ def random_effect(relay_list, effect_list):
             else:
                 current_effect(relay_list)
                 toggle = True
+        # don't reverse for morse code
+        elif current_effect == morse_code:
+            current_effect(relay_list)
+            break
         elif list_reversed:
             current_effect(relay_list[::-1])
         else:
@@ -189,8 +215,8 @@ def main():
     for relay_pin in relay_pin_list:
         relay_list.append(gpiozero.OutputDevice(relay_pin, active_high=False, initial_value=False))
 
-    effect_list = [forward_and_reverse, forward, rotate_one_dark, rotate_one_lit, bounce, alternate_lit, outside_in, inside_out]
-    #effect_list = [stacker]
+    effect_list = [forward_and_reverse, forward, rotate_one_dark, rotate_one_lit, bounce, alternate_lit, outside_in, inside_out, stacker, morse_code]
+    # effect_list = [morse_code]
 
     # set1 = relay_list[:3]
     # set2 = relay_list[3:]
